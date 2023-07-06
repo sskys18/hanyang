@@ -1,0 +1,161 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#define INF 1e9
+
+FILE *fin;
+FILE *fout;
+
+typedef struct Node{
+    int vertex;
+    int dist;
+    int prev;
+}Node;
+
+typedef struct Graph{
+    int size;
+    int** vertices;
+    Node* nodes;
+}Graph;
+
+typedef struct Heap{
+    int Capacity;
+    int Size;
+    Node* Element;
+}Heap;
+
+int min(int a, int b);
+Graph* createGraph(int size);
+void deleteGraph(Graph* g);
+void printShortestPath(Graph* g);
+Heap* createMinHeap(int heapSize);
+void deleteMinHeap(Heap* minHeap);
+void insertToMinHeap(Heap* minHeap, int vertex, int distance);
+Node deleteMin(Heap* minHeap);
+
+int min(int a, int b){
+    if(a < b) return a;
+    else return b;
+}
+
+Graph* createGraph(int size){
+    Graph* G = (Graph*)malloc(sizeof(Graph));
+    G->size = size;
+    G->vertices = (int**)malloc(sizeof(int*)*size);
+    for(int i=0;i<G->size;i++){
+        G->vertices[i] = (int*)malloc(sizeof(int)*size);
+        memset(G->vertices[i],0,sizeof(int)*size);
+    }
+    G->nodes = (Node*)malloc(sizeof(Node)*size);
+    for(int i=0;i<G->size;i++){
+        G->nodes[i].vertex = i+1;
+    }
+}
+void deleteGraph(Graph* g){
+    free(g->nodes);
+    free(g->vertices);
+    free(g);
+}
+void printShortestPath(Graph* g){
+    Heap* h = createMinHeap(g->size);
+    int* distance = (int*)malloc(sizeof(int)*g->size);
+    for(int i=0;i<g->size;i++){
+        distance[i] = INF;
+    }
+    for(int i=0;i<g->size;i++){
+        insertToMinHeap(h, g->nodes[i].vertex, g->nodes[i].dist);
+        distance[i] = g->nodes[i].dist;
+        Node n = deleteMin(h);
+        if(distance[i] >= n.dist){
+            for(int j=0;j<g->size;j++){
+                if(g->vertices[i][j] != 0){
+                    insertToMinHeap(h, g->nodes[j].vertex, g->nodes[j].dist);
+                    distance[j] = min(g->nodes[j].dist, g->nodes[i].dist + g->vertices[i][j]);
+                }
+            }
+        }
+    }
+    for(int i=1;i<g->size;i++){
+        if(distance[i] != INF){
+            Node* nodes = (Node*)malloc(sizeof(Node)*g->size);
+            int size = 0;
+            Node node = g->nodes[i];
+            while(node.vertex != 0){
+                nodes[size] = node;
+                size++;
+                for(int j=0;j<g->size;j++){
+                    if(g->nodes[j].vertex == node.prev){
+                        node = g->nodes[j];
+                    } 
+                } 
+            }
+            for(int a=1;a<size;a++){
+                fprintf(fout, "%d -> ",nodes[size-i+1].vertex);
+            }
+            fprintf(fout, "%d (cost : %d)\n",nodes[0].vertex,distance[i]);
+
+        }
+        else fprintf(fout, "can not reach to node %d\n", i);
+    }
+}
+Heap* createMinHeap(int heapSize){
+    Heap* newheap = (Heap*)malloc(sizeof(Heap));
+    newheap->Capacity = heapSize;
+    newheap->Size = 0;
+    newheap->Element = (Node*)malloc(sizeof(Node)*(heapSize+1));
+    return newheap;
+}
+void deleteMinHeap(Heap* minHeap){
+    free(minHeap->Element);
+    free(minHeap);
+}
+void insertToMinHeap(Heap* minHeap, int vertex, int distance){
+    Node n;
+    n.dist = distance;
+    n.vertex = vertex;
+    if(minHeap->Size == 0){
+        n.prev = 0;
+    }
+    else{
+        n.prev = minHeap->Element[minHeap->Size].vertex;
+    }
+    if(minHeap->Capacity >= ++minHeap->Size){
+        minHeap->Element[minHeap->Size] = n;
+    }
+    for(int i=1;i<minHeap->Size;i++){
+        if(minHeap->Element[i-1].dist> minHeap->Element[i].dist){
+            Node tmp = minHeap->Element[i-1];
+            minHeap->Element[i-1] = minHeap->Element[i];
+            minHeap->Element[i] = tmp;
+        }
+    }
+}
+Node deleteMin(Heap* minHeap){
+    Node n;
+    n.dist = minHeap->Element[minHeap->Size].dist;
+    n.vertex = minHeap->Element[minHeap->Size].vertex;
+    n.prev = minHeap->Element[minHeap->Size].prev;
+    return n;
+}
+
+void main(int argc, char* argv[]) {
+    fin = fopen(argv[1], "r");
+    fout = fopen(argv[2], "w");
+
+    Graph* g;
+    int size;
+    fscanf(fin, "%d\n", &size);
+    g = createGraph(size+1);
+
+    char tmp = 0;
+    while(tmp != '\n' && tmp != EOF) {
+        int node1, node2, weight;
+        fscanf(fin, "%d-%d-%d", &node1, &node2, &weight);
+        g->vertices[node1][node2] = weight;
+        tmp = fgetc(fin);
+    }
+
+    //printShortestPath(g);
+
+    deleteGraph(g);
+}
